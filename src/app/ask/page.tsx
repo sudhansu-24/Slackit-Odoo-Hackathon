@@ -1,9 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Tag, Plus, X } from 'lucide-react'
+import { ArrowLeft, Tag, Plus, X, CheckCircle, AlertCircle } from 'lucide-react'
 import AuthGuard from '@/components/auth/AuthGuard'
+import { createQuestion } from '@/lib/api'
+import { QuestionFormData } from '@/types/database'
+import { logInfo, logError } from '@/lib/client-logger'
 
 /**
  * Ask Question Page (Screen 2) for SlackIt Q&A platform
@@ -23,11 +27,14 @@ export default function AskQuestionPage() {
  * Main content component for the ask question page
  */
 function AskQuestionContent() {
+  const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [currentTag, setCurrentTag] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   /**
    * Handle adding a new tag
@@ -58,17 +65,65 @@ function AskQuestionContent() {
   }
 
   /**
-   * Handle form submission
+   * Handle form submission - Submit question to database
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError('')
+    setSuccess('')
     
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      // Validate form data
+      if (!title.trim() || !description.trim() || tags.length === 0) {
+        setError('Please fill in all required fields')
+        return
+      }
+
+      logInfo('Submitting new question', { 
+        title: title.trim(), 
+        descriptionLength: description.trim().length,
+        tagsCount: tags.length 
+      })
+
+      // Prepare question data
+      const questionData: QuestionFormData = {
+        title: title.trim(),
+        description: description.trim(),
+        tags: tags
+      }
+
+      // Submit to database
+      const newQuestion = await createQuestion(questionData)
+
+      if (!newQuestion) {
+        setError('Failed to create question. Please try again.')
+        logError('Question creation failed - API returned null')
+        return
+      }
+
+      // Success - show message and redirect
+      setSuccess('Question created successfully!')
+      logInfo('Question created successfully', { questionId: newQuestion.id })
+
+      // Clear form
+      setTitle('')
+      setDescription('')
+      setTags([])
+      setCurrentTag('')
+
+      // Redirect to the new question page after a short delay
+      setTimeout(() => {
+        router.push(`/questions/${newQuestion.id}`)
+      }, 1500)
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+      setError(errorMessage)
+      logError('Unexpected error during question submission', error as Error)
+    } finally {
       setIsSubmitting(false)
-      alert('Question submitted successfully! (This is a demo)')
-    }, 2000)
+    }
   }
 
   return (
@@ -104,7 +159,11 @@ function AskQuestionContent() {
               type="text"
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value)
+                setError('')
+                setSuccess('')
+              }}
               placeholder="What's your programming question? Be specific."
               className="w-full px-4 py-3 bg-gray-800 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               maxLength={200}
@@ -128,7 +187,11 @@ function AskQuestionContent() {
             <textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value)
+                setError('')
+                setSuccess('')
+              }}
               placeholder="Describe your problem in detail. Include what you've tried and what you expected to happen."
               rows={8}
               className="w-full px-4 py-3 bg-gray-800 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
@@ -178,7 +241,11 @@ function AskQuestionContent() {
               <input
                 type="text"
                 value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
+                onChange={(e) => {
+                  setCurrentTag(e.target.value)
+                  setError('')
+                  setSuccess('')
+                }}
                 onKeyDown={handleTagKeyDown}
                 placeholder="Add a tag (e.g., javascript, react, python)"
                 className="flex-1 px-4 py-2 bg-gray-800 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -200,6 +267,30 @@ function AskQuestionContent() {
               Add up to 5 tags to describe what your question is about ({tags.length}/5)
             </p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-md bg-red-900 border border-red-700 p-4">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
+                <div className="text-sm text-red-300">
+                  {error}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="rounded-md bg-green-900 border border-green-700 p-4">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                <div className="text-sm text-green-300">
+                  {success}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex justify-between items-center pt-6 border-t border-gray-700">
