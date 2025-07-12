@@ -176,50 +176,27 @@ export const getQuestions = async (
  */
 export const getQuestionWithAnswers = async (questionId: string): Promise<QuestionWithAnswers | null> => {
   try {
-    logAPI('Fetching question with answers', { questionId })
+    logAPI('Fetching question with answers via API', { questionId })
     
-    const { data: question, error: questionError } = await supabase
-      .from('questions')
-      .select(`
-        *,
-        author:profiles!author_id(id, username, avatar_url),
-        answers(count)
-      `)
-      .eq('id', questionId)
-      .single()
+    const response = await fetch(`/api/questions/${questionId}`)
     
-    if (questionError) {
-      logError('Error fetching question', questionError)
+    if (!response.ok) {
+      const errorData = await response.json()
+      logError('API error fetching question', { 
+        status: response.status, 
+        error: errorData.error || 'Unknown error' 
+      })
       return null
     }
     
-    const { data: answers, error: answersError } = await supabase
-      .from('answers')
-      .select(`
-        *,
-        author:profiles!author_id(id, username, avatar_url),
-        votes(vote_type, user_id)
-      `)
-      .eq('question_id', questionId)
-      .order('created_at', { ascending: false })
+    const question = await response.json()
     
-    if (answersError) {
-      logError('Error fetching answers', answersError)
-      return null
-    }
-    
-    const transformedQuestion: QuestionWithAnswers = {
-      ...question,
-      answer_count: question.answers?.[0]?.count || 0,
-      answers: answers || []
-    }
-    
-    logAPI('Successfully fetched question with answers', { 
+    logAPI('Successfully fetched question with answers via API', { 
       questionId, 
-      answerCount: transformedQuestion.answers.length 
+      answerCount: question.answers?.length || 0 
     })
     
-    return transformedQuestion
+    return question
   } catch (error) {
     logError('Unexpected error in getQuestionWithAnswers', error as Error)
     return null
@@ -273,31 +250,28 @@ export const createQuestion = async (questionData: QuestionFormData): Promise<Qu
  */
 export const createAnswer = async (questionId: string, answerData: AnswerFormData): Promise<Answer | null> => {
   try {
-    logAPI('Creating new answer', { questionId, contentLength: answerData.content.length })
+    logAPI('Creating new answer via API', { questionId, contentLength: answerData.content.length })
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const response = await fetch(`/api/questions/${questionId}/answers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(answerData),
+    })
     
-    if (authError || !user) {
-      logAuth('User not authenticated for answer creation')
-      return null
-    }
-    
-    const { data: answer, error } = await supabase
-      .from('answers')
-      .insert({
-        question_id: questionId,
-        content: answerData.content,
-        author_id: user.id
+    if (!response.ok) {
+      const errorData = await response.json()
+      logError('API error creating answer', { 
+        status: response.status, 
+        error: errorData.error || 'Unknown error' 
       })
-      .select()
-      .single()
-    
-    if (error) {
-      logError('Error creating answer', error)
       return null
     }
     
-    logAPI('Successfully created answer', { answerId: answer.id, questionId })
+    const answer = await response.json()
+    
+    logAPI('Successfully created answer via API', { answerId: answer.id, questionId })
     return answer
   } catch (error) {
     logError('Unexpected error in createAnswer', error as Error)
@@ -370,62 +344,29 @@ export const acceptAnswer = async (answerId: string): Promise<boolean> => {
  */
 export const vote = async (voteData: VoteFormData): Promise<boolean> => {
   try {
-    logAPI('Processing vote', voteData)
+    logAPI('Submitting vote via API', voteData)
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const response = await fetch('/api/vote', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(voteData),
+    })
     
-    if (authError || !user) {
-      logAuth('User not authenticated for voting')
+    if (!response.ok) {
+      const errorData = await response.json()
+      logError('API error submitting vote', { 
+        status: response.status, 
+        error: errorData.error || 'Unknown error' 
+      })
       return false
     }
     
-    // Check if user already voted
-    const { data: existingVote, error: voteCheckError } = await supabase
-      .from('votes')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('target_id', voteData.target_id)
-      .eq('target_type', voteData.target_type)
-      .single()
+    const result = await response.json()
     
-    if (voteCheckError && voteCheckError.code !== 'PGRST116') {
-      logError('Error checking existing vote', voteCheckError)
-      return false
-    }
-    
-    if (existingVote) {
-      // Update existing vote
-      const { error: updateError } = await supabase
-        .from('votes')
-        .update({ vote_type: voteData.vote_type })
-        .eq('id', existingVote.id)
-      
-      if (updateError) {
-        logError('Error updating vote', updateError)
-        return false
-      }
-      
-      logAPI('Successfully updated vote', { voteId: existingVote.id, voteType: voteData.vote_type })
-    } else {
-      // Create new vote
-      const { error: insertError } = await supabase
-        .from('votes')
-        .insert({
-          user_id: user.id,
-          target_id: voteData.target_id,
-          target_type: voteData.target_type,
-          vote_type: voteData.vote_type
-        })
-      
-      if (insertError) {
-        logError('Error creating vote', insertError)
-        return false
-      }
-      
-      logAPI('Successfully created vote', voteData)
-    }
-    
-    return true
+    logAPI('Successfully submitted vote via API', { success: result.success })
+    return result.success
   } catch (error) {
     logError('Unexpected error in vote', error as Error)
     return false

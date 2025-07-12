@@ -45,7 +45,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
   return (
     <div className="bg-dark-card rounded-lg p-6 border border-dark-border hover:border-dark-hover transition-all duration-200 animate-fade-in">
       <Link 
-        href={`/question/${question.id}`}
+        href={`/questions/${question.id}`}
         onClick={handleQuestionClick}
         className="block group"
       >
