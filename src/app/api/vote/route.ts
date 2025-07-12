@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 /**
  * API route to handle voting on questions and answers
@@ -23,8 +25,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid vote type' }, { status: 400 })
     }
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser()
+    // Get current user from session
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
