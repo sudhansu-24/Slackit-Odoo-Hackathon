@@ -1,163 +1,153 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Mail, MailOpen, Tag, Calendar, User, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Mail, MailOpen, Tag, Calendar, User, MessageCircle, AlertCircle, CheckCircle } from 'lucide-react'
+import { getQuestionWithAnswers, createAnswer, vote, getUserVote } from '@/lib/api'
+import { QuestionWithAnswers, AnswerFormData, VoteFormData } from '@/types/database'
+import { logInfo, logError } from '@/lib/client-logger'
 
 /**
  * Question Detail Page (Screen 3) for SlackIt Q&A platform
- * Shows a question with answers and voting system using mail-like icons
+ * Shows a real question with answers and voting system using mail-like icons
+ * Fetches data from database instead of using mock data
  */
 
-// Mock data for demonstration
-const mockQuestion = {
-  id: '1',
-  title: 'How to implement user authentication in Next.js 13 with app router?',
-  description: `I'm trying to implement user authentication in a Next.js 13 application using the new app router. I've looked at various tutorials but most of them are for the pages router.
-
-What I've tried:
-- NextAuth.js with the pages router setup (didn't work)
-- Custom authentication with cookies (having issues with middleware)
-- Firebase Auth (works but seems overkill for my simple app)
-
-What I need:
-- Simple email/password authentication
-- Protected routes
-- Session management
-- Login/logout functionality
-
-Can someone provide a working example or guide me in the right direction?`,
-  tags: ['next.js', 'authentication', 'app-router', 'react'],
-  author: {
-    username: 'johndoe',
-    avatar: null
-  },
-  votes: 15,
-  userVote: null, // null, 'up', or 'down'
-  answers: 3,
-  views: 247,
-  createdAt: '2024-01-15T10:30:00Z'
-}
-
-const mockAnswers = [
-  {
-    id: '1',
-    content: `You can use NextAuth.js with the app router. Here's a working setup:
-
-First, install NextAuth.js:
-\`\`\`bash
-npm install next-auth
-\`\`\`
-
-Then create \`app/api/auth/[...nextauth]/route.ts\`:
-\`\`\`typescript
-import NextAuth from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-
-const handler = NextAuth({
-  providers: [
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        // Add your authentication logic here
-        if (credentials?.email === "user@example.com" && credentials?.password === "password") {
-          return { id: "1", name: "User", email: "user@example.com" }
-        }
-        return null
-      }
-    })
-  ]
-})
-
-export { handler as GET, handler as POST }
-\`\`\`
-
-This should work with the app router!`,
-    author: {
-      username: 'nextjsdev',
-      avatar: null
-    },
-    votes: 8,
-    userVote: 'up',
-    isAccepted: true,
-    createdAt: '2024-01-15T11:45:00Z'
-  },
-  {
-    id: '2',
-    content: `Another approach is to use Clerk, which has excellent Next.js 13 app router support:
-
-\`\`\`bash
-npm install @clerk/nextjs
-\`\`\`
-
-Then wrap your app in \`app/layout.tsx\`:
-\`\`\`typescript
-import { ClerkProvider } from '@clerk/nextjs'
-
-export default function RootLayout({ children }) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
-  )
-}
-\`\`\`
-
-Clerk handles everything automatically and has great documentation for the app router.`,
-    author: {
-      username: 'clerkfan',
-      avatar: null
-    },
-    votes: 5,
-    userVote: null,
-    isAccepted: false,
-    createdAt: '2024-01-15T14:20:00Z'
-  }
-]
-
 export default function QuestionDetailPage({ params }: { params: { id: string } }) {
-  const [question] = useState(mockQuestion)
-  const [answers] = useState(mockAnswers)
+  const router = useRouter()
+  const [question, setQuestion] = useState<QuestionWithAnswers | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
   const [newAnswer, setNewAnswer] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [questionVote, setQuestionVote] = useState(question.userVote)
-  const [answerVotes, setAnswerVotes] = useState(
-    answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer.userVote }), {})
-  )
+  const [submitError, setSubmitError] = useState('')
+  const [submitSuccess, setSubmitSuccess] = useState('')
+
+  // Fetch question data on component mount
+  useEffect(() => {
+    const fetchQuestion = async () => {
+      try {
+        setIsLoading(true)
+        setError('')
+        
+        logInfo('Fetching question details', { questionId: params.id })
+        
+        const questionData = await getQuestionWithAnswers(params.id)
+        
+        if (!questionData) {
+          setError('Question not found')
+          logError('Question not found', { questionId: params.id })
+          return
+        }
+        
+        setQuestion(questionData)
+        logInfo('Question details fetched successfully', { 
+          questionId: params.id, 
+          title: questionData.title,
+          answerCount: questionData.answers?.length || 0
+        })
+        
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load question'
+        setError(errorMessage)
+        logError('Error fetching question details', err as Error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchQuestion()
+    }
+  }, [params.id])
 
   /**
-   * Handle voting on question or answer
+   * Handle voting on question or answer - Real database operation
    */
-  const handleVote = (type: 'question' | 'answer', id: string, voteType: 'up' | 'down') => {
-    if (type === 'question') {
-      setQuestionVote(questionVote === voteType ? null : voteType)
-    } else {
-      setAnswerVotes(prev => ({
-        ...prev,
-        [id]: prev[id] === voteType ? null : voteType
-      }))
+  const handleVote = async (targetType: 'question' | 'answer', targetId: string, voteType: 'upvote' | 'downvote') => {
+    try {
+      logInfo('Submitting vote', { targetType, targetId, voteType })
+      
+      const voteData: VoteFormData = {
+        target_id: targetId,
+        target_type: targetType,
+        vote_type: voteType
+      }
+      
+      const success = await vote(voteData)
+      
+      if (success) {
+        logInfo('Vote submitted successfully', voteData)
+        // Refresh question data to show updated votes
+        const updatedQuestion = await getQuestionWithAnswers(params.id)
+        if (updatedQuestion) {
+          setQuestion(updatedQuestion)
+        }
+      } else {
+        logError('Vote submission failed')
+      }
+      
+    } catch (error) {
+      logError('Error submitting vote', error as Error)
     }
   }
 
   /**
-   * Handle submitting a new answer
+   * Handle submitting a new answer - Real database operation
    */
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitError('')
+    setSubmitSuccess('')
     
-    // Simulate answer submission
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      if (!newAnswer.trim()) {
+        setSubmitError('Please enter an answer')
+        return
+      }
+
+      logInfo('Submitting new answer', { 
+        questionId: params.id, 
+        answerLength: newAnswer.trim().length 
+      })
+
+      const answerData: AnswerFormData = {
+        content: newAnswer.trim()
+      }
+
+      const createdAnswer = await createAnswer(params.id, answerData)
+
+      if (!createdAnswer) {
+        setSubmitError('Failed to submit answer. Please try again.')
+        logError('Answer creation failed - API returned null')
+        return
+      }
+
+      // Success
+      setSubmitSuccess('Answer submitted successfully!')
       setNewAnswer('')
-      alert('Answer submitted successfully! (This is a demo)')
-    }, 2000)
+      logInfo('Answer submitted successfully', { answerId: createdAnswer.id })
+
+      // Refresh question data to show new answer
+      const updatedQuestion = await getQuestionWithAnswers(params.id)
+      if (updatedQuestion) {
+        setQuestion(updatedQuestion)
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSubmitSuccess('')
+      }, 3000)
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+      setSubmitError(errorMessage)
+      logError('Error submitting answer', error as Error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   /**
@@ -171,6 +161,71 @@ export default function QuestionDetailPage({ params }: { params: { id: string } 
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="bg-gray-800 border-b border-gray-700">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center space-x-4">
+              <Link 
+                href="/" 
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span>Back to Questions</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 animate-pulse">
+            <div className="h-8 bg-gray-700 rounded mb-4"></div>
+            <div className="h-4 bg-gray-700 rounded mb-2"></div>
+            <div className="h-4 bg-gray-700 rounded mb-2"></div>
+            <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="bg-gray-800 border-b border-gray-700">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center space-x-4">
+              <Link 
+                href="/" 
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span>Back to Questions</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-900 border border-red-700 rounded-lg p-6">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
+              <div className="text-sm text-red-300">
+                {error}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // No question found
+  if (!question) {
+    return null
   }
 
   return (
@@ -197,23 +252,17 @@ export default function QuestionDetailPage({ params }: { params: { id: string } 
             {/* Voting */}
             <div className="flex flex-col items-center space-y-2">
               <button
-                onClick={() => handleVote('question', question.id, 'up')}
-                className={`p-2 rounded transition-colors ${
-                  questionVote === 'up' 
-                    ? 'bg-green-600 text-white' 
-                    : 'text-gray-400 hover:text-green-500 hover:bg-gray-700'
-                }`}
+                onClick={() => handleVote('question', question.id, 'upvote')}
+                className="p-2 rounded transition-colors text-gray-400 hover:text-green-500 hover:bg-gray-700"
+                title="Upvote this question"
               >
                 <MailOpen className="h-5 w-5" />
               </button>
               <span className="text-lg font-semibold">{question.votes}</span>
               <button
-                onClick={() => handleVote('question', question.id, 'down')}
-                className={`p-2 rounded transition-colors ${
-                  questionVote === 'down' 
-                    ? 'bg-red-600 text-white' 
-                    : 'text-gray-400 hover:text-red-500 hover:bg-gray-700'
-                }`}
+                onClick={() => handleVote('question', question.id, 'downvote')}
+                className="p-2 rounded transition-colors text-gray-400 hover:text-red-500 hover:bg-gray-700"
+                title="Downvote this question"
               >
                 <Mail className="h-5 w-5" />
               </button>
@@ -250,12 +299,11 @@ export default function QuestionDetailPage({ params }: { params: { id: string } 
                   </div>
                   <div className="flex items-center space-x-1">
                     <Calendar className="h-4 w-4" />
-                    <span>{formatDate(question.createdAt)}</span>
+                    <span>{formatDate(question.created_at)}</span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <span>{question.views} views</span>
-                  <span>{question.answers} answers</span>
+                  <span>{question.answers?.length || 0} answers</span>
                 </div>
               </div>
             </div>
@@ -264,35 +312,29 @@ export default function QuestionDetailPage({ params }: { params: { id: string } 
 
         {/* Answers */}
         <div className="space-y-6 mb-8">
-          <h2 className="text-xl font-semibold text-white">{answers.length} Answers</h2>
+          <h2 className="text-xl font-semibold text-white">{question.answers?.length || 0} Answers</h2>
           
-          {answers.map((answer) => (
+          {question.answers?.map((answer) => (
             <div key={answer.id} className="bg-gray-800 border border-gray-700 rounded-lg p-6">
               <div className="flex items-start space-x-4">
                 {/* Voting */}
                 <div className="flex flex-col items-center space-y-2">
                   <button
-                    onClick={() => handleVote('answer', answer.id, 'up')}
-                    className={`p-2 rounded transition-colors ${
-                      answerVotes[answer.id] === 'up' 
-                        ? 'bg-green-600 text-white' 
-                        : 'text-gray-400 hover:text-green-500 hover:bg-gray-700'
-                    }`}
+                    onClick={() => handleVote('answer', answer.id, 'upvote')}
+                    className="p-2 rounded transition-colors text-gray-400 hover:text-green-500 hover:bg-gray-700"
+                    title="Upvote this answer"
                   >
                     <MailOpen className="h-5 w-5" />
                   </button>
                   <span className="text-lg font-semibold">{answer.votes}</span>
                   <button
-                    onClick={() => handleVote('answer', answer.id, 'down')}
-                    className={`p-2 rounded transition-colors ${
-                      answerVotes[answer.id] === 'down' 
-                        ? 'bg-red-600 text-white' 
-                        : 'text-gray-400 hover:text-red-500 hover:bg-gray-700'
-                    }`}
+                    onClick={() => handleVote('answer', answer.id, 'downvote')}
+                    className="p-2 rounded transition-colors text-gray-400 hover:text-red-500 hover:bg-gray-700"
+                    title="Downvote this answer"
                   >
                     <Mail className="h-5 w-5" />
                   </button>
-                  {answer.isAccepted && (
+                  {answer.is_accepted && (
                     <div className="mt-2 p-1 bg-green-600 rounded-full">
                       <MessageCircle className="h-4 w-4 text-white" />
                     </div>
@@ -314,10 +356,10 @@ export default function QuestionDetailPage({ params }: { params: { id: string } 
                       </div>
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(answer.createdAt)}</span>
+                        <span>{formatDate(answer.created_at)}</span>
                       </div>
                     </div>
-                    {answer.isAccepted && (
+                    {answer.is_accepted && (
                       <span className="text-green-500 font-medium">✓ Accepted Answer</span>
                     )}
                   </div>
@@ -333,12 +375,41 @@ export default function QuestionDetailPage({ params }: { params: { id: string } 
           <form onSubmit={handleSubmitAnswer}>
             <textarea
               value={newAnswer}
-              onChange={(e) => setNewAnswer(e.target.value)}
+              onChange={(e) => {
+                setNewAnswer(e.target.value)
+                setSubmitError('')
+                setSubmitSuccess('')
+              }}
               placeholder="Write your answer here..."
               rows={6}
               className="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
               required
             />
+
+            {/* Error Message */}
+            {submitError && (
+              <div className="rounded-md bg-red-900 border border-red-700 p-4 mt-4">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
+                  <div className="text-sm text-red-300">
+                    {submitError}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {submitSuccess && (
+              <div className="rounded-md bg-green-900 border border-green-700 p-4 mt-4">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                  <div className="text-sm text-green-300">
+                    {submitSuccess}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end mt-4">
               <button
                 type="submit"
