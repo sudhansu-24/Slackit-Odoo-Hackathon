@@ -1,0 +1,24 @@
+{
+  "name": "SlackIt - Q&A Platform",
+  "short_name": "SlackIt",
+  "description": "A Q&A platform for developers to ask and answer technical questions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#1F2937",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["productivity", "developer", "education"],
+  "lang": "en-US"
+} 

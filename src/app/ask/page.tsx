@@ -3,13 +3,26 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Tag, Plus, X } from 'lucide-react'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 /**
  * Ask Question Page (Screen 2) for SlackIt Q&A platform
  * Allows users to create new questions with title, description, and tags
+ * Protected route that requires authentication
  */
 
 export default function AskQuestionPage() {
+  return (
+    <AuthGuard>
+      <AskQuestionContent />
+    </AuthGuard>
+  )
+}
+
+/**
+ * Main content component for the ask question page
+ */
+function AskQuestionContent() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState<string[]>([])

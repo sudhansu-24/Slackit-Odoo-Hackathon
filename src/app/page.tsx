@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import FilterBar from '@/components/ui/FilterBar'
 import QuestionCard, { QuestionCardSkeleton, EmptyQuestionState } from '@/components/ui/QuestionCard'
 import Pagination from '@/components/ui/Pagination'
+import AuthTest from '@/components/auth/AuthTest'
 import { getQuestions } from '@/lib/api'
 import { QuestionWithAuthor } from '@/types/database'
 import { logInfo, logError } from '@/lib/client-logger'
@@ -294,6 +295,11 @@ export default function HomePage() {
             maxVisiblePages={7}
           />
         )}
+
+        {/* Authentication Test Component - For debugging only */}
+        <div className="mt-12 mb-8">
+          <AuthTest />
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import Navbar from '@/components/ui/Navbar'
 
 /**
  * Inter font configuration for optimal loading
@@ -11,11 +12,18 @@ const inter = Inter({
 })
 
 /**
- * Simplified metadata configuration for SlackIt Q&A platform
+ * Comprehensive metadata configuration for SlackIt Q&A platform
  */
 export const metadata: Metadata = {
   title: 'SlackIt - Q&A Platform',
   description: 'A modern Q&A platform for developers and tech enthusiasts.',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon-192x192.png',
+  },
+  viewport: 'width=device-width, initial-scale=1',
+  themeColor: '#1F2937',
 }
 
 /**
@@ -29,12 +37,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} font-sans antialiased`}>
-        {/* Temporary simple navbar */}
-        <nav className="bg-dark-card border-b border-dark-border p-4">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-white text-xl font-bold">SlackIt</h1>
-          </div>
-        </nav>
+        {/* Navigation Bar */}
+        <Navbar />
         
         {/* Main Content Area */}
         <main className="min-h-screen bg-dark-bg">
