@@ -32,7 +32,7 @@ export default function Navbar() {
         const profile = await getCurrentUserProfile()
         setUser(profile)
         logAuth('User profile loaded for navbar', { hasUser: !!profile })
-      } catch (error) {
+      } catch (_error) {
         logAuth('Error loading user profile for navbar')
       } finally {
         setIsLoading(false)
@@ -67,7 +67,7 @@ export default function Navbar() {
       setUser(null)
       router.push('/')
       logAuth('User successfully logged out')
-    } catch (error) {
+    } catch (_error) {
       logAuth('Error during logout')
     }
   }

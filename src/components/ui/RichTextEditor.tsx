@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { 
   Bold, 
   Italic, 
@@ -268,7 +268,7 @@ export default function RichTextEditor({
           <strong>Formatting shortcuts:</strong> Ctrl+B (bold), Ctrl+I (italic), Ctrl+K (link), Ctrl+` (code)
         </p>
         <p>
-          <strong>Markdown supported:</strong> **bold**, *italic*, `code`, [link](url), > quote, - list
+          <strong>Markdown supported:</strong> **bold**, *italic*, `code`, [link](url), &gt; quote, - list
         </p>
       </div>
     </div>

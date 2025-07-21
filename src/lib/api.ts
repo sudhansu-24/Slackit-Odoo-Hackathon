@@ -5,7 +5,6 @@ import {
   Vote, 
   Profile,
   QuestionWithAuthor,
-  AnswerWithAuthor,
   QuestionWithAnswers,
   QuestionFormData,
   AnswerFormData,
@@ -208,32 +207,28 @@ export const getQuestionWithAnswers = async (questionId: string): Promise<Questi
  */
 export const createQuestion = async (questionData: QuestionFormData): Promise<Question | null> => {
   try {
-    logAPI('Creating new question', { title: questionData.title, tags: questionData.tags })
+    logAPI('Creating new question via API', { title: questionData.title, tags: questionData.tags })
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const response = await fetch('/api/questions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(questionData),
+    })
     
-    if (authError || !user) {
-      logAuth('User not authenticated for question creation')
-      return null
-    }
-    
-    const { data: question, error } = await supabase
-      .from('questions')
-      .insert({
-        title: questionData.title,
-        description: questionData.description,
-        tags: questionData.tags,
-        author_id: user.id
+    if (!response.ok) {
+      const errorData = await response.json()
+      logError('API error creating question', { 
+        status: response.status, 
+        error: errorData.error || 'Unknown error' 
       })
-      .select()
-      .single()
-    
-    if (error) {
-      logError('Error creating question', error)
       return null
     }
     
-    logAPI('Successfully created question', { questionId: question.id, title: question.title })
+    const question = await response.json()
+    
+    logAPI('Successfully created question via API', { questionId: question.id, title: question.title })
     return question
   } catch (error) {
     logError('Unexpected error in createQuestion', error as Error)

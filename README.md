@@ -1,5 +1,8 @@
 # SlackIt - Q&A Platform
 
+## 🎬 Live Demo
+**[👉 Watch Demo Video](https://drive.google.com/file/d/18cR0Ca9oHVB5FDUwx4uDV77GzzRHiMb4/view?usp=sharing)**
+
 A modern, dark-themed Q&A platform built with Next.js, TypeScript, Tailwind CSS, and Supabase. Think Stack Overflow but with a sleek, modern interface designed for developers and tech enthusiasts.
 
 ![SlackIt Platform](https://img.shields.io/badge/Platform-Next.js-000000?style=for-the-badge&logo=next.js)

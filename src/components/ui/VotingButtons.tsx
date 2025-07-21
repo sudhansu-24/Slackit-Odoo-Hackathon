@@ -45,7 +45,7 @@ export default function VotingButtons({
           targetType, 
           hasVote: !!vote 
         })
-      } catch (error) {
+      } catch (_error) {
         logInfo('Error loading user vote for voting buttons')
       }
     }
@@ -112,7 +112,7 @@ export default function VotingButtons({
       } else {
         logInfo('Vote submission failed', { targetId, targetType, voteType })
       }
-    } catch (error) {
+    } catch (_error) {
       logInfo('Error submitting vote', { targetId, targetType, voteType })
     } finally {
       setIsLoading(false)
@@ -246,7 +246,7 @@ export function CompactVotingButtons({
       try {
         const vote = await getUserVote(targetId, targetType)
         setUserVote(vote)
-      } catch (error) {
+      } catch (_error) {
         // Handle error silently
       }
     }
@@ -291,7 +291,7 @@ export function CompactVotingButtons({
 
         onVoteChange?.(newVoteCount)
       }
-    } catch (error) {
+    } catch (_error) {
       // Handle error silently
     } finally {
       setIsLoading(false)

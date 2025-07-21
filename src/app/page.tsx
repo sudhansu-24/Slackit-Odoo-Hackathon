@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import FilterBar from '@/components/ui/FilterBar'
 import QuestionCard, { QuestionCardSkeleton, EmptyQuestionState } from '@/components/ui/QuestionCard'
@@ -11,11 +11,9 @@ import { QuestionWithAuthor } from '@/types/database'
 import { logInfo, logError } from '@/lib/client-logger'
 
 /**
- * Home page component for StackIt Q&A platform (Screen 1)
- * Matches the exact mockup design with filter bar, question cards, and pagination
- * Features: "User can see questions without login"
+ * Home page content component that uses useSearchParams
  */
-export default function HomePage() {
+function HomePageContent() {
   // State management
   const [questions, setQuestions] = useState<QuestionWithAuthor[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -303,12 +301,12 @@ export default function HomePage() {
       </div>
     </div>
   )
-}
+} 
 
 /**
  * Loading component for suspense boundary
  */
-export function HomePageLoading() {
+function HomePageLoading() {
   return (
     <div className="min-h-screen bg-dark-bg">
       <div className="bg-dark-card border-b border-dark-border p-4 animate-pulse">
@@ -332,5 +330,18 @@ export function HomePageLoading() {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Home page component for SlackIt Q&A platform (Screen 1)
+ * Matches the exact mockup design with filter bar, question cards, and pagination
+ * Features: "User can see questions without login"
+ */
+export default function HomePage() {
+  return (
+    <Suspense fallback={<HomePageLoading />}>
+      <HomePageContent />
+    </Suspense>
   )
 } 

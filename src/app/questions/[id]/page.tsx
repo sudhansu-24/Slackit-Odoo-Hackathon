@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Mail, MailOpen, Tag, Calendar, User, MessageCircle, AlertCircle, CheckCircle } from 'lucide-react'
-import { getQuestionWithAnswers, createAnswer, vote, getUserVote } from '@/lib/api'
+import { getQuestionWithAnswers, createAnswer, vote } from '@/lib/api'
 import { QuestionWithAnswers, AnswerFormData, VoteFormData } from '@/types/database'
 import { logInfo, logError } from '@/lib/client-logger'
 
@@ -15,7 +14,6 @@ import { logInfo, logError } from '@/lib/client-logger'
  */
 
 export default function QuestionDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
   const [question, setQuestion] = useState<QuestionWithAnswers | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
