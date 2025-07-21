@@ -1,12 +1,34 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Vercel-optimized configuration
+  output: 'standalone',
+  
+  // Image optimization
+  images: {
+    domains: [],
+    unoptimized: false,
+  },
+  
+  // ESLint configuration - ignore during builds for deployment
   eslint: {
-    // Warning: This disables ESLint during production builds
     ignoreDuringBuilds: true,
   },
+  
+  // TypeScript configuration - ignore errors for deployment
   typescript: {
-    // Warning: This allows production builds to complete even with TypeScript errors
     ignoreBuildErrors: true,
+  },
+  
+  // Server external packages for better performance
+  serverExternalPackages: ['winston'],
+  
+  // Webpack configuration for server-side packages
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Exclude client-side modules from server bundle
+      config.externals.push('winston')
+    }
+    return config
   },
 }
 
